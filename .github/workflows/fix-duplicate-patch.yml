@@ -21,9 +21,9 @@ jobs:
           from pathlib import Path
           p = Path("index.html")
           s = p.read_text(encoding="utf-8")
-          s = s.replace(r'\\nfunction regKey', '\nfunction regKey')
-          s = s.replace(r'\\nfunction duplicateRegistration', '\nfunction duplicateRegistration')
-          s = s.replace(r'\\nfunction duplicateMessage', '\nfunction duplicateMessage')
+          s = s.replace("\\nfunction regKey", "\nfunction regKey")
+          s = s.replace("\\nfunction duplicateRegistration", "\nfunction duplicateRegistration")
+          s = s.replace("\\nfunction duplicateMessage", "\nfunction duplicateMessage")
           if 'function regKey(r)' not in s or 'duplicateRegistration(reg,edit)' not in s:
               raise SystemExit("Duplicate protection code is missing")
           p.write_text(s, encoding="utf-8")
