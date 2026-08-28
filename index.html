@@ -1,0 +1,2034 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0874a8">
+<title>Vehicle MOT Logs</title>
+
+<style>
+:root{
+  --bg:#edf5f9;
+  --card:#fff;
+  --text:#14263a;
+  --muted:#65778b;
+  --blue:#0b8bc1;
+  --green:#0aa36f;
+  --red:#d93045;
+  --border:#d6e2ea
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif
+}
+
+header{
+  background:linear-gradient(110deg,#064b70,#0d8dc0);
+  color:#fff;
+  padding:42px 22px 34px
+}
+
+header h1{
+  font-size:38px;
+  line-height:1.05;
+  margin:0 0 10px;
+  font-weight:900
+}
+
+header p{
+  margin:0;
+  font-size:19px;
+  font-weight:650;
+  opacity:.92
+}
+
+main{
+  max-width:900px;
+  margin:auto;
+  padding:28px 18px 50px
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:18px
+}
+
+.stat{
+  background:#fff;
+  border-radius:24px;
+  padding:24px;
+  box-shadow:0 3px 14px #173b4b10
+}
+
+.stat:last-child{
+  grid-column:1/-1
+}
+
+.stat b{
+  font-size:40px;
+  display:block;
+  line-height:1
+}
+
+.stat span{
+  display:block;
+  color:var(--muted);
+  font-size:18px;
+  font-weight:650;
+  margin-top:10px
+}
+
+.toolbar{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:12px;
+  margin:18px 0
+}
+
+.search{
+  min-width:0;
+  padding:17px 18px;
+  border:2px solid #d2e0e8;
+  border-radius:18px;
+  background:#fff;
+  font-size:18px;
+  outline:none
+}
+
+.btn{
+  border:0;
+  border-radius:18px;
+  padding:16px 20px;
+  font-size:18px;
+  font-weight:850;
+  cursor:pointer
+}
+
+.primary{
+  background:var(--blue);
+  color:#fff
+}
+
+.green{
+  background:var(--green);
+  color:#fff
+}
+
+.secondary{
+  background:#fff;
+  color:var(--blue);
+  border:2px solid #d5e2ea
+}
+
+.list{
+  display:grid;
+  gap:14px
+}
+
+.vehicle{
+  background:#fff;
+  border-radius:24px;
+  padding:22px;
+  box-shadow:0 3px 14px #173b4b10;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px
+}
+
+.reg{
+  font-size:28px;
+  font-weight:950;
+  letter-spacing:.5px
+}
+
+.model{
+  font-size:19px;
+  color:var(--muted);
+  font-weight:650;
+  margin-top:4px
+}
+
+.days{
+  text-align:right;
+  font-size:34px;
+  font-weight:950;
+  white-space:nowrap
+}
+
+.days small{
+  display:block;
+  color:var(--muted);
+  font-size:14px;
+  margin-top:4px
+}
+
+.badge{
+  display:inline-block;
+  margin-top:13px;
+  padding:8px 13px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:900
+}
+
+.ok{
+  background:#ddf6eb;
+  color:#087b54
+}
+
+.to-book{
+  background:#fff0cf;
+  color:#965d00
+}
+
+.booked{
+  background:#e5efff;
+  color:#2458b8
+}
+
+.expired{
+  background:#ffe3e6;
+  color:#b42335
+}
+
+.actions{
+  grid-column:1/-1;
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap;
+  margin-top:4px
+}
+
+.actions .btn{
+  padding:11px 14px;
+  font-size:15px
+}
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:#10263899;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:20
+}
+
+.modal.open{
+  display:flex
+}
+
+.panel{
+  width:min(620px,100%);
+  max-height:92vh;
+  overflow:auto;
+  background:#fff;
+  border-radius:26px;
+  padding:24px;
+  box-shadow:0 25px 70px #0005
+}
+
+.panel h2{
+  margin:0 0 18px;
+  font-size:28px
+}
+
+.field{
+  margin:14px 0
+}
+
+.field label{
+  display:block;
+  font-size:15px;
+  font-weight:850;
+  margin:0 0 7px
+}
+
+.field input,
+.field select{
+  width:100%;
+  padding:15px;
+  border:2px solid #d5e2ea;
+  border-radius:15px;
+  font-size:18px;
+  background:#fff
+}
+
+.form-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:20px
+}
+
+.notice{
+  background:#eef8ff;
+  border-radius:17px;
+  padding:15px 17px;
+  color:#205e7d;
+  font-weight:650;
+  line-height:1.45;
+  margin:12px 0
+}
+
+.scan-status{
+  margin-top:12px;
+  font-weight:750;
+  color:var(--muted)
+}
+
+.progress{
+  height:9px;
+  background:#e5edf2;
+  border-radius:99px;
+  overflow:hidden;
+  margin-top:10px
+}
+
+.progress i{
+  display:block;
+  height:100%;
+  width:0;
+  background:var(--green);
+  transition:width .2s
+}
+
+.found{
+  background:#edf9f4;
+  border:2px solid #bcebd6;
+  border-radius:18px;
+  padding:15px;
+  margin-top:15px
+}
+
+.found b{
+  display:block;
+  margin-bottom:5px
+}
+
+.empty{
+  text-align:center;
+  background:#fff;
+  border-radius:24px;
+  padding:45px 20px;
+  color:var(--muted);
+  font-size:18px
+}
+
+@media(max-width:700px){
+
+  header h1{
+    font-size:32px
+  }
+
+  .toolbar{
+    grid-template-columns:1fr 1fr
+  }
+
+  .toolbar .search{
+    grid-column:1/-1
+  }
+
+  .vehicle{
+    grid-template-columns:1fr
+  }
+
+  .days{
+    text-align:left
+  }
+
+  .stat b{
+    font-size:34px
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🚗 Vehicle MOT Logs</h1>
+  <p>Your personal MOT priority list</p>
+</header>
+
+<main>
+
+<section class="stats">
+
+<div class="stat">
+  <b id="priorityCount">0</b>
+  <span>To book · 100 days or less</span>
+</div>
+
+<div class="stat">
+  <b id="bookedCount">0</b>
+  <span>Booked</span>
+</div>
+
+<div class="stat">
+  <b id="totalCount">0</b>
+  <span>Vehicles logged</span>
+</div>
+
+</section>
+
+<div class="toolbar">
+
+<input
+  id="search"
+  class="search"
+  placeholder="Search registration or model…"
+  autocomplete="off"
+>
+
+<button class="btn primary" id="addBtn">
+  ＋ Add
+</button>
+
+<button class="btn green" id="scanBtn">
+  📷 Scan vehicle
+</button>
+
+</div>
+
+<div id="list" class="list"></div>
+
+</main>
+
+
+<!-- CAMERA INPUT -->
+
+<input
+  id="cameraInput"
+  type="file"
+  accept="image/*"
+  capture="environment"
+  style="display:none"
+>
+
+
+<!-- ADD / EDIT VEHICLE -->
+
+<div id="editModal" class="modal">
+
+<div class="panel">
+
+<h2 id="editTitle">Add vehicle</h2>
+
+<div class="field">
+<label for="reg">Registration</label>
+<input
+  id="reg"
+  maxlength="10"
+  placeholder="e.g. MV61 HTY"
+  autocomplete="off"
+>
+</div>
+
+<div class="field">
+<label for="model">Make / model</label>
+<input
+  id="model"
+  placeholder="e.g. Vauxhall Astra"
+>
+</div>
+
+<div class="field">
+<label for="motDate">MOT expiry date</label>
+<input id="motDate" type="date">
+</div>
+
+<div class="field">
+
+<label for="status">Status</label>
+
+<select id="status">
+
+<option value="auto">Automatic</option>
+<option value="to-book">To book</option>
+<option value="booked">Booked</option>
+<option value="ok">Current</option>
+
+</select>
+
+</div>
+
+<div class="form-actions">
+
+<button class="btn secondary" id="cancelEdit">
+Cancel
+</button>
+
+<button class="btn primary" id="saveEdit">
+Save vehicle
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- SCANNER -->
+
+<div id="scanModal" class="modal">
+
+<div class="panel">
+
+<h2>📷 Scan MOT details</h2>
+
+<div class="notice">
+
+Take a clear photograph of the MOT / GOV.UK vehicle-details page.
+
+The scanner specifically looks for:
+
+<br><br>
+
+<b>Make</b><br>
+<b>Model</b><br>
+<b>MOT expiry / MOT expires</b>
+
+<br><br>
+
+Nothing is saved until you check the results.
+
+</div>
+
+<div id="scanStatus" class="scan-status">
+Waiting for image…
+</div>
+
+<div class="progress">
+<i id="progress"></i>
+</div>
+
+<div id="found" class="found" style="display:none"></div>
+
+
+<div class="field">
+<label for="scanReg">Registration</label>
+<input id="scanReg" placeholder="Not found">
+</div>
+
+<div class="field">
+<label for="scanMake">Make</label>
+<input id="scanMake" placeholder="Not found">
+</div>
+
+<div class="field">
+<label for="scanModel">Model</label>
+<input id="scanModel" placeholder="Not found">
+</div>
+
+<div class="field">
+<label for="scanDate">MOT expiry</label>
+<input id="scanDate" type="date">
+</div>
+
+
+<div class="form-actions">
+
+<button class="btn secondary" id="cancelScan">
+Cancel
+</button>
+
+<button class="btn primary" id="saveScan">
+Save vehicle
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- OCR ENGINE -->
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+
+<script>
+
+"use strict";
+
+
+/* =========================
+   STORAGE
+========================= */
+
+const KEY="vehicleMotLogs.v2";
+
+let vehicles=[];
+let editingId=null;
+
+const $=id=>document.getElementById(id);
+
+try{
+
+  vehicles=JSON.parse(
+    localStorage.getItem(KEY)||"[]"
+  );
+
+}catch(e){
+
+  vehicles=[];
+
+}
+
+
+/* =========================
+   SAVE / DATE FUNCTIONS
+========================= */
+
+function persist(){
+
+  localStorage.setItem(
+    KEY,
+    JSON.stringify(vehicles)
+  );
+
+  render();
+
+}
+
+
+function today(){
+
+  const d=new Date();
+
+  d.setHours(0,0,0,0);
+
+  return d;
+
+}
+
+
+function daysRemaining(date){
+
+  if(!date) return 99999;
+
+  const d=new Date(
+    date+"T00:00:00"
+  );
+
+  return Math.round(
+    (d-today())/86400000
+  );
+
+}
+
+
+function fmt(date){
+
+  if(!date) return "—";
+
+  return new Date(
+    date+"T00:00:00"
+  ).toLocaleDateString(
+    "en-GB",
+    {
+      day:"2-digit",
+      month:"2-digit",
+      year:"numeric"
+    }
+  );
+
+}
+
+
+/* =========================
+   STATUS
+========================= */
+
+function status(v){
+
+  const d=daysRemaining(v.motDate);
+
+  if(d<0)
+    return "expired";
+
+  if(v.status==="booked")
+    return "booked";
+
+  if(
+    v.status==="to-book" ||
+    d<=100
+  )
+    return "to-book";
+
+  return "ok";
+
+}
+
+
+function statusText(s){
+
+  return {
+
+    expired:"MOT EXPIRED",
+
+    "to-book":"TO BOOK",
+
+    booked:"BOOKED",
+
+    ok:"CURRENT"
+
+  }[s]||"";
+
+}
+
+
+/* =========================
+   HTML SAFETY
+========================= */
+
+function esc(x){
+
+  return String(x??"")
+    .replace(
+      /[&<>"']/g,
+      c=>({
+
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#39;"
+
+      }[c])
+    );
+
+}
+
+
+/* =========================
+   DISPLAY VEHICLES
+========================= */
+
+function render(){
+
+  const q=$("search")
+    .value
+    .trim()
+    .toLowerCase();
+
+  const shown=vehicles
+
+    .filter(v=>
+      (v.reg+" "+v.model)
+      .toLowerCase()
+      .includes(q)
+    )
+
+    .sort(
+      (a,b)=>
+        daysRemaining(a.motDate) -
+        daysRemaining(b.motDate)
+    );
+
+
+  $("totalCount").textContent=
+    vehicles.length;
+
+
+  $("bookedCount").textContent=
+    vehicles.filter(
+      v=>status(v)==="booked"
+    ).length;
+
+
+  $("priorityCount").textContent=
+    vehicles.filter(
+      v=>daysRemaining(v.motDate)<=100
+    ).length;
+
+
+  if(!shown.length){
+
+    $("list").innerHTML=
+      '<div class="empty">'+
+      'No vehicles logged yet.<br><br>'+
+      'Tap <b>＋ Add</b> or <b>📷 Scan vehicle</b>.'+
+      '</div>';
+
+    return;
+
+  }
+
+
+  $("list").innerHTML=
+
+    shown.map(v=>{
+
+      const d=
+        daysRemaining(v.motDate);
+
+      const s=status(v);
+
+      const dt=
+        d<0
+        ?Math.abs(d)+" days overdue"
+        :d+" days";
+
+
+      return `
+
+<article class="vehicle">
+
+<div>
+
+<div class="reg">
+${esc(v.reg)}
+</div>
+
+<div class="model">
+${esc(v.model)}
+</div>
+
+<span class="badge ${s}">
+${statusText(s)}
+</span>
+
+</div>
+
+
+<div class="days">
+
+${dt}
+
+<small>
+MOT expires ${esc(fmt(v.motDate))}
+</small>
+
+</div>
+
+
+<div class="actions">
+
+<button
+class="btn secondary"
+data-edit="${esc(v.id)}"
+>
+Edit
+</button>
+
+
+${
+s==="to-book"
+
+?`
+
+<button
+class="btn green"
+data-book="${esc(v.id)}"
+>
+Mark booked
+</button>
+
+`
+
+:""
+}
+
+
+${
+s==="booked"
+
+?`
+
+<button
+class="btn green"
+data-complete="${esc(v.id)}"
+>
+MOT completed
+</button>
+
+`
+
+:""
+}
+
+
+<button
+class="btn secondary"
+data-delete="${esc(v.id)}"
+>
+Delete
+</button>
+
+
+</div>
+
+</article>
+
+`;
+
+    }).join("");
+
+}
+
+
+/* =========================
+   ADD / EDIT
+========================= */
+
+function openEdit(v){
+
+  editingId=v?.id||null;
+
+  $("editTitle").textContent=
+    editingId
+    ?"Edit vehicle"
+    :"Add vehicle";
+
+
+  $("reg").value=
+    v?.reg||"";
+
+  $("model").value=
+    v?.model||"";
+
+  $("motDate").value=
+    v?.motDate||"";
+
+  $("status").value=
+    v?.status||"auto";
+
+
+  $("editModal")
+    .classList
+    .add("open");
+
+}
+
+
+function closeEdit(){
+
+  $("editModal")
+    .classList
+    .remove("open");
+
+}
+
+
+$("addBtn").onclick=()=>openEdit();
+
+$("cancelEdit").onclick=
+  closeEdit;
+
+
+$("saveEdit").onclick=()=>{
+
+  const reg=
+    $("reg")
+    .value
+    .trim()
+    .toUpperCase();
+
+  const model=
+    $("model")
+    .value
+    .trim();
+
+  const motDate=
+    $("motDate").value;
+
+  const statusVal=
+    $("status").value;
+
+
+  if(
+    !reg ||
+    !model ||
+    !motDate
+  ){
+
+    alert(
+      "Please enter registration, make/model and MOT expiry date."
+    );
+
+    return;
+
+  }
+
+
+  if(editingId){
+
+    const v=
+      vehicles.find(
+        x=>x.id===editingId
+      );
+
+    Object.assign(
+      v,
+      {
+        reg,
+        model,
+        motDate,
+        status:statusVal
+      }
+    );
+
+  }else{
+
+    vehicles.push({
+
+      id:
+        String(Date.now())+
+        Math.random(),
+
+      reg,
+      model,
+      motDate,
+      status:statusVal
+
+    });
+
+  }
+
+
+  closeEdit();
+
+  persist();
+
+};
+
+
+/* =========================
+   SCANNER OPEN
+========================= */
+
+$("scanBtn").onclick=()=>{
+
+  $("cameraInput").value="";
+
+  /*
+    IMPORTANT:
+
+    This is a real file/camera input.
+
+    On iPhone Safari, capture="environment"
+    tells iOS to use the rear camera.
+  */
+
+  $("cameraInput").click();
+
+};
+
+
+/* =========================
+   CAMERA IMAGE RECEIVED
+========================= */
+
+$("cameraInput").onchange=
+async e=>{
+
+  const file=
+    e.target.files?.[0];
+
+  if(!file)
+    return;
+
+
+  $("scanModal")
+    .classList
+    .add("open");
+
+
+  $("scanStatus").textContent=
+    "Loading image…";
+
+
+  $("progress").style.width=
+    "5%";
+
+
+  $("found").style.display=
+    "none";
+
+
+  try{
+
+    const result=
+      await runOCR(file);
+
+
+    const data=
+      parseMOT(result);
+
+
+    $("scanReg").value=
+      data.reg;
+
+    $("scanMake").value=
+      data.make;
+
+    $("scanModel").value=
+      data.model;
+
+    $("scanDate").value=
+      data.date;
+
+
+    const found=[];
+
+
+    if(data.reg)
+      found.push(
+        "Registration: "+data.reg
+      );
+
+
+    if(data.make)
+      found.push(
+        "Make: "+data.make
+      );
+
+
+    if(data.model)
+      found.push(
+        "Model: "+data.model
+      );
+
+
+    if(data.date)
+      found.push(
+        "MOT expiry: "+fmt(data.date)
+      );
+
+
+    $("found").innerHTML=
+
+      found.length
+
+      ?
+
+      "<b>Information found</b>"+
+      found
+        .map(esc)
+        .join("<br>")
+
+      :
+
+      "<b>No reliable fields found.</b>"+
+      " Please take a closer, sharper photo.";
+
+
+    $("found").style.display=
+      "block";
+
+
+    $("scanStatus").textContent=
+      "Finished — check and correct everything before saving.";
+
+
+    $("progress").style.width=
+      "100%";
+
+
+  }catch(err){
+
+    console.error(err);
+
+
+    $("scanStatus").textContent=
+      "Scanner error: "+
+      (err.message||err);
+
+
+    $("progress").style.width=
+      "0%";
+
+  }
+
+};
+
+
+/* =========================
+   OCR
+========================= */
+
+async function runOCR(file){
+
+  if(!window.Tesseract){
+
+    throw new Error(
+      "OCR engine did not load. Check your internet connection and reload the page."
+    );
+
+  }
+
+
+  const worker=
+    await Tesseract.createWorker(
+      "eng",
+      1,
+      {
+
+        logger:m=>{
+
+          if(
+            m.status &&
+            typeof m.progress==="number"
+          ){
+
+            $("scanStatus").textContent=
+              m.status;
+
+
+            $("progress").style.width=
+              Math.max(
+                5,
+                Math.round(
+                  m.progress*100
+                )
+              )+"%";
+
+          }
+
+        }
+
+      }
+    );
+
+
+  try{
+
+    const {data}=
+      await worker.recognize(file);
+
+    return data.text||"";
+
+  }finally{
+
+    await worker.terminate();
+
+  }
+
+}
+
+
+/* =========================
+   NORMALISE OCR
+========================= */
+
+function norm(s){
+
+  return s
+
+    .toUpperCase()
+
+    .replace(/[|]/g,"I")
+
+    .replace(/[“”]/g,'"')
+
+    .replace(/[‘’]/g,"'")
+
+    .replace(/\r/g,"");
+
+}
+
+
+function cleanValue(s){
+
+  return s
+
+    .replace(/^[\s:=-]+/,"")
+
+    .replace(/\s+/g," ")
+
+    .trim();
+
+}
+
+
+/* =========================
+   MAIN MOT PARSER
+========================= */
+
+function parseMOT(raw){
+
+  const text=
+    norm(raw);
+
+
+  const lines=
+    text
+      .split("\n")
+      .map(x=>x.trim())
+      .filter(Boolean);
+
+
+  let reg="";
+  let make="";
+  let model="";
+  let date="";
+
+
+  const joined=
+    lines.join(" ");
+
+
+  /*
+    REGISTRATION
+
+    First look for an explicit
+    Registration label.
+  */
+
+  const regLabel=
+    lines.findIndex(
+      x=>
+        /^(REGISTRATION|REGISTRATION NUMBER|VEHICLE REGISTRATION|NUMBER PLATE)\b/
+        .test(x)
+    );
+
+
+  if(regLabel>=0){
+
+    const after=
+      cleanValue(
+        lines[regLabel]
+          .replace(
+            /^(REGISTRATION|REGISTRATION NUMBER|VEHICLE REGISTRATION|NUMBER PLATE)\s*:?\s*/,
+            ""
+          )
+      );
+
+
+    reg=
+      extractReg(after)||"";
+
+  }
+
+
+  /*
+    If the explicit label failed,
+    look for a normal UK registration.
+
+    Example:
+
+    MV61 HTY
+    AB12 CDE
+  */
+
+  if(!reg){
+
+    const candidates=
+      joined.match(
+        /\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b/g
+      )||[];
+
+
+    reg=
+      candidates[0]||"";
+
+  }
+
+
+  reg=
+    reg
+      .replace(/\s/g," ")
+      .toUpperCase();
+
+
+  /*
+    MAKE
+
+    IMPORTANT:
+
+    We only accept text associated
+    with the word MAKE.
+  */
+
+  make=
+    valueAfterLabel(
+      lines,
+      /^MAKE\s*:?\s*/
+    );
+
+
+  /*
+    MODEL
+
+    IMPORTANT:
+
+    We only accept text associated
+    with the word MODEL.
+  */
+
+  model=
+    valueAfterLabel(
+      lines,
+      /^MODEL\s*:?\s*/
+    );
+
+
+  /*
+    Some OCR results may combine
+    "Make / Model".
+  */
+
+  if(!make || !model){
+
+    const mm=
+      lines.find(
+        x=>
+          /^MAKE\s*(?:\/|AND|&)\s*MODEL\b/
+          .test(x)
+      );
+
+
+    if(mm){
+
+      const rest=
+        cleanValue(
+          mm.replace(
+            /^MAKE\s*(?:\/|AND|&)\s*MODEL\s*:?\s*/,
+            ""
+          )
+        );
+
+
+      const parts=
+        rest
+          .split(/\s{2,}|\s*[-–—]\s*/)
+          .map(cleanValue)
+          .filter(Boolean);
+
+
+      if(parts.length>=2){
+
+        make=
+          make||parts[0];
+
+        model=
+          model||
+          parts
+            .slice(1)
+            .join(" ");
+
+      }
+
+    }
+
+  }
+
+
+  /*
+    MOT EXPIRY
+
+    THIS IS THE IMPORTANT PART.
+
+    We specifically search for:
+
+    MOT EXPIRY
+    MOT EXPIRES
+    MOT EXPIRY DATE
+    MOT EXPIRATION
+
+    We do NOT simply grab any date
+    appearing on the page.
+  */
+
+  const expiryPatterns=[
+
+    /MOT\s+(?:EXPIRY|EXPIRES|EXPIRATION|EXPIRY\s+DATE|EXPIRATION\s+DATE)\s*:?\s*(.+)$/i,
+
+    /MOT\s+EXPIRY\s+DATE\s*:?\s*(.+)$/i,
+
+    /EXPIR(?:Y|ES|ATION)\s+DATE\s*:?\s*(.+)$/i
+
+  ];
+
+
+  for(const line of lines){
+
+    for(
+      const p of expiryPatterns
+    ){
+
+      const m=
+        line.match(p);
+
+
+      if(m){
+
+        date=
+          parseDate(m[1]);
+
+
+        if(date)
+          break;
+
+      }
+
+    }
+
+
+    if(date)
+      break;
+
+  }
+
+
+  /*
+    Also handle:
+
+    MOT expires
+    6 July 2027
+
+    where OCR has put the date
+    on the next line.
+  */
+
+  if(!date){
+
+    for(
+      let i=0;
+      i<lines.length;
+      i++
+    ){
+
+      if(
+        /MOT\s+(?:EXPIRY|EXPIRES|EXPIRATION)/i
+          .test(lines[i])
+      ){
+
+        if(lines[i+1]){
+
+          date=
+            parseDate(
+              lines[i+1]
+            );
+
+          if(date)
+            break;
+
+        }
+
+      }
+
+    }
+
+  }
+
+
+  /*
+    Final result
+  */
+
+  return{
+
+    reg,
+    make,
+    model,
+    date
+
+  };
+
+}
+
+
+/* =========================
+   LABEL VALUE EXTRACTION
+========================= */
+
+function valueAfterLabel(
+  lines,
+  re
+){
+
+  for(
+    let i=0;
+    i<lines.length;
+    i++
+  ){
+
+    if(re.test(lines[i])){
+
+      const v=
+        cleanValue(
+          lines[i].replace(
+            re,
+            ""
+          )
+        );
+
+
+      if(
+        v &&
+        !/^(MAKE|MODEL|MOT|EXPIRY|EXPIRES)$/i
+          .test(v)
+      ){
+
+        return tidyName(v);
+
+      }
+
+
+      /*
+        Handle:
+
+        MAKE
+        VAUXHALL
+
+        or
+
+        MODEL
+        ASTRA
+      */
+
+      if(lines[i+1]){
+
+        if(
+          !/^(MAKE|MODEL|MOT|EXPIRY|EXPIRES|REGISTRATION)\b/i
+            .test(lines[i+1])
+        ){
+
+          return tidyName(
+            cleanValue(
+              lines[i+1]
+            )
+          );
+
+        }
+
+      }
+
+    }
+
+  }
+
+  return "";
+
+}
+
+
+/* =========================
+   CLEAN MAKE / MODEL
+========================= */
+
+function tidyName(s){
+
+  return s
+
+    .replace(
+      /\s+/g,
+      " "
+    )
+
+    .replace(
+      /^[|:.-]+|[|:.-]+$/g,
+      ""
+    )
+
+    .trim()
+
+    .replace(
+      /\b([A-Z]{2,})\b/g,
+      m=>
+        m.charAt(0)+
+        m.slice(1).toLowerCase()
+    );
+
+}
+
+
+/* =========================
+   UK REGISTRATION
+========================= */
+
+function extractReg(s){
+
+  const m=
+    s
+      .toUpperCase()
+      .match(
+        /\b([A-Z]{2}\d{2}\s?[A-Z]{3})\b/
+      );
+
+
+  return m
+    ?m[1]
+    :"";
+
+}
+
+
+/* =========================
+   DATE PARSER
+========================= */
+
+function parseDate(s){
+
+  let x=
+    s
+      .toUpperCase()
+      .replace(/[|]/g,"I")
+      .replace(
+        /\bO(?=\d)/g,
+        "0"
+      )
+      .trim();
+
+
+  /*
+    DD/MM/YYYY
+  */
+
+  let m=
+    x.match(
+      /\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/
+    );
+
+
+  if(m){
+
+    return iso(
+      m[3],
+      m[2],
+      m[1]
+    );
+
+  }
+
+
+  /*
+    6 JULY 2027
+  */
+
+  m=
+    x.match(
+      /\b(\d{1,2})\s+(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER)\s+(\d{4})\b/
+    );
+
+
+  if(m){
+
+    const months={
+
+      JANUARY:1,
+      FEBRUARY:2,
+      MARCH:3,
+      APRIL:4,
+      MAY:5,
+      JUNE:6,
+      JULY:7,
+      AUGUST:8,
+      SEPTEMBER:9,
+      OCTOBER:10,
+      NOVEMBER:11,
+      DECEMBER:12
+
+    };
+
+
+    return iso(
+      m[3],
+      months[m[2]],
+      m[1]
+    );
+
+  }
+
+
+  /*
+    6 JUL 2027
+  */
+
+  m=
+    x.match(
+      /\b(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+(\d{4})\b/
+    );
+
+
+  if(m){
+
+    const months={
+
+      JAN:1,
+      FEB:2,
+      MAR:3,
+      APR:4,
+      MAY:5,
+      JUN:6,
+      JUL:7,
+      AUG:8,
+      SEP:9,
+      OCT:10,
+      NOV:11,
+      DEC:12
+
+    };
+
+
+    return iso(
+      m[3],
+      months[m[2]],
+      m[1]
+    );
+
+  }
+
+
+  return "";
+
+}
+
+
+/* =========================
+   VALID DATE
+========================= */
+
+function iso(y,m,d){
+
+  const yy=Number(y);
+  const mm=Number(m);
+  const dd=Number(d);
+
+
+  const dt=
+    new Date(
+      yy,
+      mm-1,
+      dd
+    );
+
+
+  if(
+    dt.getFullYear()!==yy ||
+    dt.getMonth()!==mm-1 ||
+    dt.getDate()!==dd
+  ){
+
+    return "";
+
+  }
+
+
+  return y+
+    "-" +
+    String(mm).padStart(2,"0")+
+    "-" +
+    String(dd).padStart(2,"0");
+
+}
+
+
+/* =========================
+   SAVE SCANNED VEHICLE
+========================= */
+
+function saveScan(){
+
+  const reg=
+    $("scanReg")
+      .value
+      .trim()
+      .toUpperCase();
+
+
+  const make=
+    $("scanMake")
+      .value
+      .trim();
+
+
+  const model=
+    $("scanModel")
+      .value
+      .trim();
+
+
+  const motDate=
+    $("scanDate").value;
+
+
+  /*
+    Do NOT allow incomplete
+    scanner results to be saved.
+  */
+
+  if(
+    !reg ||
+    !make ||
+    !model ||
+    !motDate
+  ){
+
+    alert(
+      "Please check the scan and enter/correct the registration, make, model and MOT expiry date before saving."
+    );
+
+    return;
+
+  }
+
+
+  vehicles.push({
+
+    id:
+      String(Date.now())+
+      Math.random(),
+
+    reg,
+
+    model:
+      make+" "+model,
+
+    motDate,
+
+    status:"auto"
+
+  });
+
+
+  localStorage.setItem(
+    KEY,
+    JSON.stringify(vehicles)
+  );
+
+
+  $("scanModal")
+    .classList
+    .remove("open");
+
+
+  render();
+
+}
+
+
+/* =========================
+   SCANNER CANCEL
+========================= */
+
+$("cancelScan").onclick=()=>{
+
+  $("scanModal")
+    .classList
+    .remove("open");
+
+};
+
+
+/* =========================
+   VEHICLE BUTTONS
+========================= */
+
+$("list").onclick=e=>{
+
+  const b=
+    e.target.closest("button");
+
+
+  if(!b)
+    return;
+
+
+  const id=
+    b.dataset.edit ||
+    b.dataset.book ||
+    b.dataset.complete ||
+    b.dataset.delete;
+
+
+  const v=
+    vehicles.find(
+      x=>x.id===id
+    );
+
+
+  if(!v)
+    return;
+
+
+  if(b.dataset.edit){
+
+    openEdit(v);
+
+  }
+
+
+  if(b.dataset.book){
+
+    v.status="booked";
+
+    persist();
+
+  }
+
+
+  if(b.dataset.complete){
+
+    const d=
+      prompt(
+        "Enter the new MOT expiry date (YYYY-MM-DD):",
+        v.motDate
+      );
+
+
+    if(
+      d &&
+      /^\d{4}-\d{2}-\d{2}$/.test(d)
+    ){
+
+      v.motDate=d;
+
+      v.status="auto";
+
+      persist();
+
+    }
+
+  }
+
+
+  if(
+    b.dataset.delete &&
+    confirm(
+      "Delete this vehicle?"
+    )
+  ){
+
+    vehicles=
+      vehicles.filter(
+        x=>x.id!==id
+      );
+
+    persist();
+
+  }
+
+};
+
+
+/* =========================
+   SEARCH
+========================= */
+
+$("search").oninput=
+  render;
+
+
+/* =========================
+   START
+========================= */
+
+render();
+
+</script>
+
+</body>
+</html>
