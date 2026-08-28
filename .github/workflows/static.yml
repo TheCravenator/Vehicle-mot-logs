@@ -1,4 +1,4 @@
-# Deploy the current Vehicle MOT Logs app to GitHub Pages
+# Deploy Vehicle MOT Logs to GitHub Pages
 name: Deploy static content to Pages
 
 on:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -24,63 +24,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Add import and export controls
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          marker = '<button class="scan" onclick="openScanner()">📷 Scan vehicle</button>'
-          controls = marker + '<button class="plain" onclick="exportData()">⬇️ Export</button><button class="plain" onclick="importData()">⬆️ Import</button><input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="handleImport(event)">' 
-          if 'onclick="exportData()"' not in s:
-              if marker not in s:
-                  raise SystemExit('toolbar marker not found')
-              s = s.replace(marker, controls, 1)
-          funcs = r'''
-          function exportData(){
-            const payload={app:"Vehicle MOT Logs",version:1,exportedAt:new Date().toISOString(),vehicles:data};
-            const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
-            const url=URL.createObjectURL(blob);const a=document.createElement("a");
-            a.href=url;a.download="vehicle-mot-logs-"+new Date().toISOString().slice(0,10)+".json";
-            document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-          }
-          function importData(){$("importFile").value="";$('importFile').click()}
-          function handleImport(event){
-            const file=event.target.files&&event.target.files[0];if(!file)return;
-            const reader=new FileReader();reader.onload=()=>{try{
-              const parsed=JSON.parse(reader.result),imported=Array.isArray(parsed)?parsed:parsed.vehicles;
-              if(!Array.isArray(imported))throw Error("The file does not contain a vehicle list.");
-              const valid=imported.filter(v=>v&&typeof v==="object"&&typeof v.reg==="string"&&typeof v.model==="string"&&typeof v.date==="string").map(v=>({
-                id:String(v.id||(Date.now()+Math.random())),reg:v.reg.trim().toUpperCase(),model:v.model.trim(),date:v.date,
-                status:["auto","booked","current"].includes(v.status)?v.status:"auto"
-              }));
-              if(imported.length&&!valid.length)throw Error("No valid vehicle records were found.");
-              if(!confirm("Import "+valid.length+" vehicle"+(valid.length===1?"":"s")+"?\n\nThis will replace the current vehicle list."))return;
-              data=valid;persist();alert("Import complete — "+valid.length+" vehicle"+(valid.length===1?"":"s")+" loaded.");
-            }catch(e){alert("Import failed: "+(e.message||"Invalid JSON file."));}};
-            reader.onerror=()=>alert("Import failed: the file could not be read.");reader.readAsText(file);
-          }
-          '''
-          if 'function exportData()' not in s:
-              marker2 = 'render();'
-              if marker2 not in s:
-                  raise SystemExit('render marker not found')
-              s = s.replace(marker2, funcs + '\n' + marker2, 1)
-          p.write_text(s,encoding='utf-8')
-      - name: Save the modified app back to main
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --cached --quiet || git commit -m "Add import and export controls [skip ci]"
-          git push
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
