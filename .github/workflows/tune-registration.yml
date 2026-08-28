@@ -51,19 +51,16 @@ jobs:
               if(r)candidates.push({r,score});
             }
           };
-          // First priority: text immediately following an explicit registration/vehicle-registration label.
           for(let i=0;i<a.length;i++){
             if(/\b(REGISTRATION|REG\.?\s*(NO|NUMBER)?|VRM|VEHICLE\s+REGISTRATION)\b/i.test(a[i])){
               add(a[i].replace(/^.*?\b(?:REGISTRATION|REG\.?\s*(?:NO|NUMBER)?|VRM|VEHICLE\s+REGISTRATION)\b\s*[:#=-]?\s*/i,""),120);
               if(a[i+1])add(a[i+1],115);
             }
           }
-          // Second priority: the classic UK plate pattern anywhere in OCR text.
           const compact=raw.replace(/\s+/g," ");
           const re=/\b([A-Z0-9]{2}\s?[A-Z0-9]{2}\s?[A-Z0-9]{3})\b/g;
           let m;
           while((m=re.exec(compact)))add(m[1],80);
-          // Also inspect short chunks because OCR often drops spaces around a number plate.
           for(const line of a){
             const tokens=line.split(/\s+/);
             for(let i=0;i<tokens.length;i++){
@@ -86,3 +83,5 @@ jobs:
           git add index.html
           git diff --cached --quiet || git commit -m 'Improve UK registration OCR extraction'
           git push
+
+# Trigger registration OCR tuning
