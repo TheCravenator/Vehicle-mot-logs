@@ -25,32 +25,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add four equal priority summary cards
+      - name: Maintain current app layout and backup controls
         shell: python
         run: |
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
+
+          # Keep the four equal summary cards.
           s = s.replace('.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}', '.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}', 1)
           s = s.replace('@media(max-width:520px){.cards{grid-template-columns:1fr 1fr}.card:last-child{grid-column:1/-1}.row{grid-template-columns:1fr}.days{text-align:left}}', '@media(max-width:720px){.cards{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}.days{text-align:left}}', 1)
           old_cards = '<div class="cards"><div class="card"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></div><div class="card"><div class="num" id="booked">0</div><div class="label">Booked</div></div><div class="card"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></div></div>'
           new_cards = '<div class="cards"><div class="card"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></div><div class="card"><div class="num" id="booked">0</div><div class="label">Booked</div></div><div class="card"><div class="num" id="within200">0</div><div class="label">200 days or less</div></div><div class="card"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></div></div>'
           if old_cards in s:
               s = s.replace(old_cards, new_cards, 1)
+
           old_render = '$("total").textContent=data.length;$("priority").textContent=data.filter(v=>days(v.date)<=100).length;$("booked").textContent=data.filter(v=>state(v)==="booked").length;'
           new_render = '$("total").textContent=data.length;$("priority").textContent=data.filter(v=>days(v.date)<=100).length;$("booked").textContent=data.filter(v=>state(v)==="booked").length;$("within200").textContent=data.filter(v=>days(v.date)<=200).length;'
           if old_render in s:
               s = s.replace(old_render, new_render, 1)
+
+          # Make the existing JSON export/import functions clearly available as Backup/Restore.
+          old_controls = '<button class="plain" onclick="exportData()">⬇️ Export</button><button class="plain" onclick="importData()">⬆️ Import</button>'
+          new_controls = '<button class="plain" onclick="backupData()">💾 Backup</button><button class="plain" onclick="restoreData()">♻️ Restore</button><button class="plain" onclick="exportData()">⬇️ Export</button><button class="plain" onclick="importData()">⬆️ Import</button>'
+          if 'onclick="backupData()"' not in s and old_controls in s:
+              s = s.replace(old_controls, new_controls, 1)
+
+          # Add explicit backup/restore wrappers once. The backup is a downloadable JSON file,
+          # so it survives browser cache/data clearing and can be restored on the same or another device.
+          if 'function backupData()' not in s:
+              marker = 'function focusSearch()'
+              funcs = 'function backupData(){exportData();alert("Backup created — save the downloaded vehicle-mot-logs JSON file somewhere safe, such as Files/iCloud Drive.")}function restoreData(){importData()}\n'
+              if marker not in s:
+                  raise SystemExit('Could not find app function insertion point.')
+              s = s.replace(marker, funcs + marker, 1)
+
           p.write_text(s, encoding='utf-8')
 
-      - name: Save the card layout change
+      - name: Save the updated app
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html .github/workflows/static.yml
           if ! git diff --cached --quiet; then
-            git commit -m "Add 200-day priority card [skip ci]"
+            git commit -m "Add vehicle list backup and restore controls [skip ci]"
             git push
           fi
 
