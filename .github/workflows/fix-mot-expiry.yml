@@ -1,0 +1,84 @@
+name: Fix MOT expiry OCR
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tighten MOT expiry matching
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+
+          new_func = r'''function findMOTExpiry(t){
+          const a=lines(t),mot=/\bMOT\b/i,expiry=/\b(EXPIRES?|EXPIRY|EXPIRATION)\b/i;
+          function fromExpiryLine(s){
+            const m=String(s||"").match(/\b(?:EXPIRES?|EXPIRY|EXPIRATION)\b\s*[:=-]?\s*(.*)$/i);
+            return m?(parseDate(m[1])||dateFromDays(m[1])):"";
+          }
+          // The MOT date must be tied directly to the words MOT + EXPIRES/EXPIRY.
+          // This deliberately ignores unrelated dates such as Tax due dates.
+          for(let i=0;i<a.length;i++){
+            if(mot.test(a[i])&&expiry.test(a[i])){
+              const d=fromExpiryLine(a[i]);
+              if(d)return d;
+            }
+          }
+          // Some OCR puts MOT and Expires on adjacent lines.
+          for(let i=0;i<a.length;i++){
+            if(!mot.test(a[i]))continue;
+            for(let j=i+1;j<Math.min(a.length,i+3);j++){
+              if(expiry.test(a[j])){
+                const d=fromExpiryLine(a[j]);
+                if(d)return d;
+              }
+            }
+          }
+          for(let i=0;i<a.length;i++){
+            if(!expiry.test(a[i]))continue;
+            for(let j=Math.max(0,i-2);j<i;j++){
+              if(mot.test(a[j])){
+                const d=fromExpiryLine(a[i]);
+                if(d)return d;
+              }
+            }
+          }
+          return "";
+          }'''
+
+          pattern = r'function findMOTExpiry\(t\)\{.*?\}\s*async function imageCanvas'
+          replacement = new_func + "\nasync function imageCanvas"
+          patched, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit("Could not find the existing findMOTExpiry function")
+          if patched == s:
+              print("No change needed")
+          else:
+              p.write_text(patched, encoding="utf-8")
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Tighten MOT expiry OCR matching [skip ci]"
+            git push
+          fi
