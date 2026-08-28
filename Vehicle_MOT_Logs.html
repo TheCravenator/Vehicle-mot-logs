@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Vehicle MOT Logs</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#fff; --text:#172033; --muted:#6b7485;
+  --primary:#356df3; --primary2:#6c4df6; --danger:#e5484d;
+  --warning:#f59e0b; --success:#16a36a; --border:#e4e8f0;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:linear-gradient(135deg,#eef4ff,#f8f5ff 55%,#f4f7fb);color:var(--text)}
+header{padding:28px 20px 18px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:white}
+header h1{margin:0;font-size:28px} header p{margin:5px 0 0;opacity:.88}
+main{max-width:1050px;margin:auto;padding:18px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 5px 20px #25385812}
+.stat b{font-size:28px;display:block}.stat span{color:var(--muted);font-size:13px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+button,input,select{font:inherit}
+button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700}
+.primary{background:var(--primary);color:#fff}.secondary{background:#fff;color:var(--text);border:1px solid var(--border)}
+.search{flex:1;min-width:190px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:white}
+.list{display:grid;gap:10px}
+.vehicle{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:15px;display:grid;grid-template-columns:1fr auto;gap:12px;box-shadow:0 4px 16px #2538580b}
+.reg{font-size:18px;font-weight:800}.model{color:var(--muted);margin-top:3px}
+.days{text-align:right;font-weight:900;font-size:23px}.days small{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;margin-top:9px}
+.to-book{background:#fff1d6;color:#9a5b00}.booked{background:#e7efff;color:#2856bd}.ok{background:#e2f7ed;color:#087347}.expired{background:#ffe5e6;color:#b4232a}
+.actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.actions button{padding:9px 12px;font-size:13px}
+.empty{text-align:center;padding:45px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:#11182766;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
+.modal.open{display:flex}.panel{background:white;border-radius:20px;padding:22px;width:min(500px,100%);box-shadow:0 20px 60px #0003}
+.panel h2{margin-top:0}.field{margin:13px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+.field input,.field select{width:100%;padding:12px;border:1px solid var(--border);border-radius:11px}
+.form-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
+.note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.5}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:1/-1}.vehicle{grid-template-columns:1fr}.days{text-align:left}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚗 Vehicle MOT Logs</h1>
+  <p>Simple MOT priority tracking for your garage</p>
+</header>
+
+<main>
+  <section class="stats">
+    <div class="stat"><b id="priorityCount">0</b><span>Due / to book (≤100 days)</span></div>
+    <div class="stat"><b id="bookedCount">0</b><span>Booked</span></div>
+    <div class="stat"><b id="totalCount">0</b><span>Total vehicles</span></div>
+  </section>
+
+  <div class="toolbar">
+    <input id="search" class="search" placeholder="Search registration or model…">
+    <button class="primary" onclick="openAdd()">＋ Add vehicle</button>
+  </div>
+
+  <div id="list" class="list"></div>
+</main>
+
+<div id="modal" class="modal">
+  <div class="panel">
+    <h2 id="modalTitle">Add vehicle</h2>
+    <div class="field"><label>Registration</label><input id="reg" maxlength="12" placeholder="e.g. AB12 CDE"></div>
+    <div class="field"><label>Model</label><input id="model" placeholder="e.g. Ford Focus"></div>
+    <div class="field"><label>MOT due date</label><input id="motDate" type="date"></div>
+    <div class="field"><label>Status</label>
+      <select id="status">
+        <option value="auto">Automatic</option>
+        <option value="to-book">To Book</option>
+        <option value="booked">Booked</option>
+        <option value="ok">MOT Completed / Current</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+      <button class="primary" onclick="saveVehicle()">Save vehicle</button>
+    </div>
+    <div class="note">Days remaining are calculated automatically from today's date. Vehicles with 100 days or fewer are prioritised, with the fewest days at the top.</div>
+  </div>
+</div>
+
+<script>
+const KEY="vehicleMotLogs.v1";
+let vehicles=JSON.parse(localStorage.getItem(KEY)||"[]");
+let editingId=null;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(vehicles));render()}
+function daysRemaining(date){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const due=new Date(date+"T00:00:00"); due.setHours(0,0,0,0);
+  return Math.ceil((due-today)/86400000);
+}
+function effectiveStatus(v,d){
+  if(d<0)return "expired";
+  if(v.status==="booked")return "booked";
+  if(v.status==="to-book" || (v.status==="auto" && d<=100))return "to-book";
+  return "ok";
+}
+function statusLabel(s){
+  return {expired:"MOT EXPIRED", "to-book":"TO BOOK", booked:"BOOKED", ok:"CURRENT"}[s];
+}
+function render(){
+  const q=document.getElementById("search").value.trim().toLowerCase();
+  let shown=vehicles.filter(v=>(v.reg+" "+v.model).toLowerCase().includes(q));
+  shown.sort((a,b)=>daysRemaining(a.motDate)-daysRemaining(b.motDate));
+  document.getElementById("totalCount").textContent=vehicles.length;
+  document.getElementById("bookedCount").textContent=vehicles.filter(v=>effectiveStatus(v,daysRemaining(v.motDate))==="booked").length;
+  document.getElementById("priorityCount").textContent=vehicles.filter(v=>daysRemaining(v.motDate)<=100).length;
+
+  const list=document.getElementById("list");
+  if(!shown.length){list.innerHTML='<div class="empty">No vehicles logged yet.<br>Tap <b>Add vehicle</b> to get started.</div>';return}
+  list.innerHTML=shown.map(v=>{
+    const d=daysRemaining(v.motDate), s=effectiveStatus(v,d);
+    const daysText=d<0 ? Math.abs(d)+" days overdue" : d+" days";
+    return `<article class="vehicle">
+      <div><div class="reg">${escapeHtml(v.reg)}</div><div class="model">${escapeHtml(v.model)}</div>
+      <span class="badge ${s}">${statusLabel(s)}</span></div>
+      <div class="days">${daysText}<small>MOT due ${formatDate(v.motDate)}</small></div>
+      <div class="actions">
+        <button class="secondary" onclick="editVehicle('${v.id}')">Edit</button>
+        ${s==="to-book" ? `<button class="primary" onclick="markBooked('${v.id}')">Mark booked</button>` : ""}
+        ${s==="booked" ? `<button class="primary" onclick="markCompleted('${v.id}')">MOT completed</button>` : ""}
+        <button class="secondary" onclick="removeVehicle('${v.id}')">Delete</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+function formatDate(x){return new Date(x+"T00:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"})}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function openAdd(){
+  editingId=null; document.getElementById("modalTitle").textContent="Add vehicle";
+  document.getElementById("reg").value="";document.getElementById("model").value="";
+  document.getElementById("motDate").value="";document.getElementById("status").value="auto";
+  document.getElementById("modal").classList.add("open");
+}
+function editVehicle(id){
+  const v=vehicles.find(x=>x.id===id); if(!v)return;
+  editingId=id; document.getElementById("modalTitle").textContent="Edit vehicle";
+  document.getElementById("reg").value=v.reg;document.getElementById("model").value=v.model;
+  document.getElementById("motDate").value=v.motDate;document.getElementById("status").value=v.status;
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+function saveVehicle(){
+  const reg=document.getElementById("reg").value.trim().toUpperCase();
+  const model=document.getElementById("model").value.trim();
+  const motDate=document.getElementById("motDate").value;
+  const status=document.getElementById("status").value;
+  if(!reg||!model||!motDate){alert("Please enter the registration, model and MOT due date.");return}
+  if(editingId){
+    const v=vehicles.find(x=>x.id===editingId); Object.assign(v,{reg,model,motDate,status});
+  }else vehicles.push({id:crypto.randomUUID(),reg,model,motDate,status});
+  closeModal();save();
+}
+function markBooked(id){const v=vehicles.find(x=>x.id===id);v.status="booked";save()}
+function markCompleted(id){
+  const v=vehicles.find(x=>x.id===id);
+  const d=prompt("Enter the new MOT due date (YYYY-MM-DD):",v.motDate);
+  if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)){v.motDate=d;v.status="auto";save()}
+}
+function removeVehicle(id){
+  if(confirm("Delete this vehicle from Vehicle MOT Logs?")){
+    vehicles=vehicles.filter(v=>v.id!==id);save();
+  }
+}
+document.getElementById("search").addEventListener("input",render);
+render();
+</script>
+</body>
+</html>
