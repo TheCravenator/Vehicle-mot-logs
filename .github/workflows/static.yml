@@ -25,7 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Maintain current app layout and backup controls
+      - name: Maintain current app layout, backup controls and clickable vehicle filters
         shell: python
         run: |
           from pathlib import Path
@@ -36,23 +36,48 @@ jobs:
           s = s.replace('.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}', '.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}', 1)
           s = s.replace('@media(max-width:520px){.cards{grid-template-columns:1fr 1fr}.card:last-child{grid-column:1/-1}.row{grid-template-columns:1fr}.days{text-align:left}}', '@media(max-width:720px){.cards{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}.days{text-align:left}}', 1)
           old_cards = '<div class="cards"><div class="card"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></div><div class="card"><div class="num" id="booked">0</div><div class="label">Booked</div></div><div class="card"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></div></div>'
-          new_cards = '<div class="cards"><div class="card"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></div><div class="card"><div class="num" id="booked">0</div><div class="label">Booked</div></div><div class="card"><div class="num" id="within200">0</div><div class="label">200 days or less</div></div><div class="card"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></div></div>'
+          new_cards = '<div class="cards"><button class="card cardBtn" onclick="setListFilter(\'priority\')" type="button"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></button><button class="card cardBtn" onclick="setListFilter(\'booked\')" type="button"><div class="num" id="booked">0</div><div class="label">Booked</div></button><button class="card cardBtn" onclick="setListFilter(\'within200\')" type="button"><div class="num" id="within200">0</div><div class="label">200 days or less</div></button><button class="card cardBtn" onclick="setListFilter(\'all\')" type="button"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></button></div>'
           if old_cards in s:
               s = s.replace(old_cards, new_cards, 1)
 
-          old_render = '$("total").textContent=data.length;$("priority").textContent=data.filter(v=>days(v.date)<=100).length;$("booked").textContent=data.filter(v=>state(v)==="booked").length;'
-          new_render = '$("total").textContent=data.length;$("priority").textContent=data.filter(v=>days(v.date)<=100).length;$("booked").textContent=data.filter(v=>state(v)==="booked").length;$("within200").textContent=data.filter(v=>days(v.date)<=200).length;'
-          if old_render in s:
-              s = s.replace(old_render, new_render, 1)
+          # Convert the current four-card block to real buttons if it has already been installed.
+          if 'onclick="setListFilter(\'priority\')"' not in s:
+              old_cards_current = '<div class="cards"><div class="card"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></div><div class="card"><div class="card"><div class="num" id="booked">0</div>'
+              # Use a targeted replacement of the actual current opening/closing markup.
+              start = '<div class="cards"><div class="card"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></div><div class="card"><div class="num" id="booked">0</div><div class="label">Booked</div></div><div class="card"><div class="num" id="within200">0</div><div class="label">200 days or less</div></div><div class="card"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></div></div>'
+              replacement = '<div class="cards"><button class="card cardBtn" onclick="setListFilter(\'priority\')" type="button"><div class="num" id="priority">0</div><div class="label">To book · 100 days or less</div></button><button class="card cardBtn" onclick="setListFilter(\'booked\')" type="button"><div class="num" id="booked">0</div><div class="label">Booked</div></button><button class="card cardBtn" onclick="setListFilter(\'within200\')" type="button"><div class="num" id="within200">0</div><div class="label">200 days or less</div></button><button class="card cardBtn" onclick="setListFilter(\'all\')" type="button"><div class="num" id="total">0</div><div class="label">Vehicles logged</div></button></div>'
+              if start in s:
+                  s = s.replace(start, replacement, 1)
 
-          # Make the existing JSON export/import functions clearly available as Backup/Restore.
+          # Style the cards as pressed/clickable buttons without changing their appearance.
+          if '.cardBtn{width:100%;text-align:left;' not in s:
+              s = s.replace('.card{padding:14px}', '.card{padding:14px}.cardBtn{width:100%;text-align:left;appearance:none;color:inherit}.cardBtn:active{transform:scale(.985)}.cardBtn:focus-visible{outline:3px solid #087eb5;outline-offset:2px}', 1)
+
+          # Add the list filter state and function once.
+          if 'function setListFilter(' not in s:
+              marker = 'function focusSearch()'
+              funcs = 'let listFilter="all";function setListFilter(filter){listFilter=filter;$("search").value="";render();window.scrollTo({top:document.querySelector(".list").offsetTop-12,behavior:"smooth"})}\n'
+              if marker not in s:
+                  raise SystemExit('Could not find app function insertion point.')
+              s = s.replace(marker, funcs + marker, 1)
+
+          # Make render honour the selected card.
+          old_filter = 'const raw=$("search").value.toLowerCase().trim(),q=raw.replace(/\\s+/g,""),vs=data.filter(v=>{const reg=String(v.reg||"").toLowerCase().replace(/[^a-z0-9]/g,"");const text=(v.reg+" "+v.model).toLowerCase();return reg.includes(q.replace(/[^a-z0-9]/g,""))||text.includes(raw)}).sort((a,b)=>days(a.date)-days(b.date));'
+          new_filter = 'const raw=$("search").value.toLowerCase().trim(),q=raw.replace(/\\s+/g,""),vs=data.filter(v=>{const reg=String(v.reg||"").toLowerCase().replace(/[^a-z0-9]/g,"");const text=(v.reg+" "+v.model).toLowerCase();const matchesSearch=reg.includes(q.replace(/[^a-z0-9]/g,""))||text.includes(raw);const d=days(v.date),st=state(v);const matchesFilter=listFilter==="all"||(listFilter==="priority"&&d<=100)||(listFilter==="booked"&&st==="booked")||(listFilter==="within200"&&d<=200);return matchesSearch&&matchesFilter}).sort((a,b)=>days(a.date)-days(b.date));'
+          if old_filter in s:
+              s = s.replace(old_filter, new_filter, 1)
+
+          # Searching should return to the full list so the search box behaves naturally.
+          search_listener = '$("search").addEventListener("input",render);'
+          if search_listener in s and 'listFilter="all"' in s:
+              s = s.replace(search_listener, '$("search").addEventListener("input",()=>{listFilter="all";render()});', 1)
+
+          # Keep backup/restore controls.
           old_controls = '<button class="plain" onclick="exportData()">⬇️ Export</button><button class="plain" onclick="importData()">⬆️ Import</button>'
           new_controls = '<button class="plain" onclick="backupData()">💾 Backup</button><button class="plain" onclick="restoreData()">♻️ Restore</button><button class="plain" onclick="exportData()">⬇️ Export</button><button class="plain" onclick="importData()">⬆️ Import</button>'
           if 'onclick="backupData()"' not in s and old_controls in s:
               s = s.replace(old_controls, new_controls, 1)
 
-          # Add explicit backup/restore wrappers once. The backup is a downloadable JSON file,
-          # so it survives browser cache/data clearing and can be restored on the same or another device.
           if 'function backupData()' not in s:
               marker = 'function focusSearch()'
               funcs = 'function backupData(){exportData();alert("Backup created — save the downloaded vehicle-mot-logs JSON file somewhere safe, such as Files/iCloud Drive.")}function restoreData(){importData()}\n'
@@ -69,7 +94,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html .github/workflows/static.yml
           if ! git diff --cached --quiet; then
-            git commit -m "Add vehicle list backup and restore controls [skip ci]"
+            git commit -m "Make priority cards clickable vehicle filters [skip ci]"
             git push
           fi
 
