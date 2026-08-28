@@ -1,0 +1,56 @@
+name: Prevent duplicate vehicle registrations
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add duplicate protection
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+
+          helper = r'''\nfunction regKey(r){return String(r||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}\nfunction duplicateRegistration(reg,ignoreId=null){const k=regKey(reg);return data.find(v=>regKey(v.reg)===k&&String(v.id)!==String(ignoreId))||null}\nfunction duplicateMessage(v){return "Vehicle " + String(v.reg||"").toUpperCase() + " is already on your list."}\n'''
+
+          if "function regKey(r)" not in s:
+              marker = 'function saveVehicle(){'
+              if marker not in s:
+                  raise SystemExit("saveVehicle marker not found")
+              s = s.replace(marker, helper + marker, 1)
+
+          old_save = '''function saveVehicle(){const reg=$("reg").value.trim().toUpperCase(),model=$("model").value.trim(),date=$("date").value,status=$("status").value;if(!reg||!model||!date)return alert("Please complete Registration, Make / Model and MOT due date.");if(edit){const v=data.find(x=>x.id===edit);if(v)Object.assign(v,{reg,model,date,status})}else data.push({id:String(Date.now())+Math.random(),reg,model,date,status});closeModal();persist()}'''
+          new_save = '''function saveVehicle(){const reg=$("reg").value.trim().toUpperCase(),model=$("model").value.trim(),date=$("date").value,status=$("status").value;if(!reg||!model||!date)return alert("Please complete Registration, Make / Model and MOT due date.");const dup=duplicateRegistration(reg,edit);if(dup)return alert(duplicateMessage(dup)+"\\n\\nThe same registration cannot be added twice.");if(edit){const v=data.find(x=>x.id===edit);if(v)Object.assign(v,{reg,model,date,status})}else data.push({id:String(Date.now())+Math.random(),reg,model,date,status});closeModal();persist()}'''
+          if old_save in s:
+              s = s.replace(old_save, new_save, 1)
+          elif "duplicateRegistration(reg,edit)" not in s:
+              raise SystemExit("saveVehicle code not recognised")
+
+          old_scan = '''function saveScan(){const reg=$("sreg").value.trim().toUpperCase(),make=$("smake").value.trim(),model=$("smodel").value.trim(),date=$("sdate").value;if(!reg||!make||!model||!date)return alert("Please check Registration, Make, Model and MOT expiry before saving.");data.push({id:String(Date.now())+Math.random(),reg,model:make+" "+model,date,status:"auto"});closeScan();persist()}'''
+          new_scan = '''function saveScan(){const reg=$("sreg").value.trim().toUpperCase(),make=$("smake").value.trim(),model=$("smodel").value.trim(),date=$("sdate").value;if(!reg||!make||!model||!date)return alert("Please check Registration, Make, Model and MOT expiry before saving.");const dup=duplicateRegistration(reg);if(dup)return alert(duplicateMessage(dup)+"\\n\\nThis vehicle is already on your list.");data.push({id:String(Date.now())+Math.random(),reg,model:make+" "+model,date,status:"auto"});closeScan();persist()}'''
+          if old_scan in s:
+              s = s.replace(old_scan, new_scan, 1)
+          elif "This vehicle is already on your list." not in s:
+              raise SystemExit("saveScan code not recognised")
+
+          p.write_text(s, encoding="utf-8")
+
+      - name: Commit protection
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Block duplicate vehicle registrations [skip ci]"
+          git push
