@@ -21,10 +21,8 @@ jobs:
           from pathlib import Path
           p = Path("index.html")
           s = p.read_text(encoding="utf-8")
-          s = s.replace("\\nfunction regKey", "\nfunction regKey")
-          s = s.replace("\\nfunction duplicateRegistration", "\nfunction duplicateRegistration")
-          s = s.replace("\\nfunction duplicateMessage", "\nfunction duplicateMessage")
-          if 'function regKey(r)' not in s or 'duplicateRegistration(reg,edit)' not in s:
+          s = s.replace("\\nfunction", "\nfunction")
+          if 'function regKey(r)' not in s or 'duplicateRegistration(reg,edit)' not in s or 'duplicateRegistration(reg)' not in s:
               raise SystemExit("Duplicate protection code is missing")
           p.write_text(s, encoding="utf-8")
 
@@ -34,5 +32,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --cached --quiet || git commit -m "Fix duplicate protection formatting [skip ci]"
+          git diff --cached --quiet || git commit -m "Finish duplicate protection formatting [skip ci]"
           git push
